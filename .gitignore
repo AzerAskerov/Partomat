@@ -1,0 +1,44 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+
+# Flutter/Dart packages
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+
+# Flutter builds
+build/
+.dart_tool/
+
+# Android paths
+partomat_app/android/.gradle/
+partomat_app/android/captures/
+partomat_app/android/local.properties
+partomat_app/android/**/GeneratedPluginRegistrant.java
+
+# iOS paths
+partomat_app/ios/Pods/
+partomat_app/ios/.symlinks/
+partomat_app/ios/Flutter/Flutter.podspec
+partomat_app/ios/Flutter/Generated.xcconfig
+partomat_app/ios/Flutter/app.flx
+partomat_app/ios/Flutter/apphead.flx
+partomat_app/ios/Flutter/flutter_assets/
+partomat_app/ios/Flutter/flutter_export_environment.sh
+partomat_app/ios/Runner/GeneratedPluginRegistrant.*
+
+# VS Code
+.vscode/
+
+# Android Studio/IntelliJ
+*.iml
+.idea/ 
