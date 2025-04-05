@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'auth_success_screen.dart';
+import 'phone_auth_screen.dart';
 
 class VerificationScreen extends StatefulWidget {
   final String phoneNumber;
@@ -185,7 +186,10 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
                   // Phone Number Display with Back Option
                   InkWell(
-                    onTap: () => Navigator.pop(context),
+                    onTap: () => Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PhoneAuthScreen()),
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

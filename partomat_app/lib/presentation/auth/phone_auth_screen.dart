@@ -13,19 +13,31 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   final TextEditingController _phoneController = TextEditingController();
   bool _isLoading = false;
   String? _errorText;
+  bool _isPhoneValid = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _phoneController.addListener(_validatePhone);
+  }
 
   @override
   void dispose() {
+    _phoneController.removeListener(_validatePhone);
     _phoneController.dispose();
     super.dispose();
   }
 
-  void _handlePhoneSubmit() {
-    if (_phoneController.text.length < 9) {
-      setState(() => _errorText = 'Düzgün telefon nömrəsi daxil edin');
-      return;
-    }
+  void _validatePhone() {
+    setState(() {
+      _isPhoneValid = _phoneController.text.length == 9;
+      if (_isPhoneValid) {
+        _errorText = null;
+      }
+    });
+  }
 
+  void _handlePhoneSubmit() {
     setState(() {
       _isLoading = true;
       _errorText = null;
@@ -167,7 +179,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
 
                   // Continue Button
                   ElevatedButton(
-                    onPressed: _isLoading ? null : _handlePhoneSubmit,
+                    onPressed: _isLoading || !_isPhoneValid ? null : _handlePhoneSubmit,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colorScheme.primary,
                       foregroundColor: Colors.white,
