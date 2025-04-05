@@ -15,6 +15,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "809251325828-vdqkrgo1f524h3deodc39pi1kqdjpmbn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.partomat.android.app",
+            "certificate_hash": "1824a5a50814d33473c66b832eb95d982f125075"
+          }
+        },
+        {
           "client_id": "809251325828-26sv5itquq1lcsbe0imlp6es2ivulemk.apps.googleusercontent.com",
           "client_type": 3
         }
