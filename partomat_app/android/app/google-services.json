@@ -1,42 +1,33 @@
 {
   "project_info": {
-    "project_number": "809251325828",
-    "firebase_url": "https://tste-f3f2f.firebaseio.com",
-    "project_id": "tste-f3f2f",
-    "storage_bucket": "tste-f3f2f.firebasestorage.app"
+    "project_number": "149557706664",
+    "project_id": "partomat",
+    "storage_bucket": "partomat.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:809251325828:android:acf880981818eb4472ffd1",
+        "mobilesdk_app_id": "1:149557706664:android:f318720dcd46f7404e679d",
         "android_client_info": {
           "package_name": "com.partomat.android.app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "809251325828-vdqkrgo1f524h3deodc39pi1kqdjpmbn.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.partomat.android.app",
-            "certificate_hash": "1824a5a50814d33473c66b832eb95d982f125075"
-          }
-        },
-        {
-          "client_id": "809251325828-26sv5itquq1lcsbe0imlp6es2ivulemk.apps.googleusercontent.com",
+          "client_id": "149557706664-inr16dmjncobb8ibe1avlrkck51bghnc.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyAep0AmfDMfW71K47BoSI7TFpwVE-MbPzE"
+          "current_key": "AIzaSyBNdeoA-f4C2aHe48Jeh64F8AKHs1LDHiQ"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "809251325828-26sv5itquq1lcsbe0imlp6es2ivulemk.apps.googleusercontent.com",
+              "client_id": "149557706664-inr16dmjncobb8ibe1avlrkck51bghnc.apps.googleusercontent.com",
               "client_type": 3
             }
           ]

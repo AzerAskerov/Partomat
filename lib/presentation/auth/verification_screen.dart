@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'auth_success_screen.dart';
 import 'phone_auth_screen.dart';
+import 'package:partomat_app/core/utils/logger.dart';
 
 class VerificationScreen extends StatefulWidget {
   final String phoneNumber;
@@ -39,6 +40,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
   @override
   void initState() {
     super.initState();
+    Logger.info('VerificationScreen: Initialized for phone ${widget.phoneNumber}');
     _startResendTimer();
   }
 
@@ -51,16 +53,12 @@ class _VerificationScreenState extends State<VerificationScreen> {
       node.dispose();
     }
     _resendTimer?.cancel();
+    Logger.info('VerificationScreen: Disposed');
     super.dispose();
   }
 
   void _startResendTimer() {
-    setState(() {
-      _timerSeconds = 60;
-      _canResendCode = false;
-    });
-
-    _resendTimer?.cancel();
+    Logger.debug('VerificationScreen: Starting resend timer');
     _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         if (_timerSeconds > 0) {
@@ -68,6 +66,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
         } else {
           _canResendCode = true;
           timer.cancel();
+          Logger.debug('VerificationScreen: Resend timer expired');
         }
       });
     });
@@ -75,9 +74,9 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
   void _handleVerifyCode() async {
     final String smsCode = _otpControllers.map((c) => c.text).join();
-
     if (smsCode.length != 6) {
-      setState(() => _errorText = '6 rəqəmli təsdiq kodunu daxil edin');
+      Logger.warning('VerificationScreen: Invalid OTP length - ${smsCode.length}');
+      setState(() => _errorText = 'Please enter a valid 6-digit code');
       return;
     }
 
@@ -86,57 +85,36 @@ class _VerificationScreenState extends State<VerificationScreen> {
       _errorText = null;
     });
 
+    Logger.info('VerificationScreen: Attempting to verify code for phone ${widget.phoneNumber}');
+
     try {
-      PhoneAuthCredential credential = PhoneAuthProvider.credential(
+      final credential = PhoneAuthProvider.credential(
         verificationId: widget.verificationId,
         smsCode: smsCode,
       );
 
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
-      
-      if (!mounted) return;
-      setState(() { _isLoading = false; });
+      await FirebaseAuth.instance.signInWithCredential(credential);
+      Logger.info('VerificationScreen: Code verified successfully');
 
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder: (context) => const AuthSuccessScreen(),
         ),
       );
-       ScaffoldMessenger.of(context).showSnackBar(
-         SnackBar(content: Text('Uğurla daxil oldunuz: ${userCredential.user?.phoneNumber ?? ""}')),
-      );
-
     } on FirebaseAuthException catch (e) {
-       if (!mounted) return;
-       setState(() {
-         _isLoading = false;
-         if (e.code == 'invalid-verification-code') {
-            _errorText = 'Yanlış kod daxil edildi.';
-         } else if (e.code == 'session-expired') {
-            _errorText = 'Kodun vaxtı bitib. Yenidən göndərin.';
-         } else {
-           _errorText = 'Təsdiq uğursuz oldu: ${e.message}';
-         }
-       });
-        ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text('Xəta: ${_errorText ?? 'Bilinməyən xəta'}')),
-        );
-       for (var controller in _otpControllers) {
-          controller.clear();
-        }
-        if (_otpFocusNodes.isNotEmpty) {
-          _otpFocusNodes[0].requestFocus();
-        }
+      Logger.error('VerificationScreen: Verification failed', e);
+      setState(() {
+        _isLoading = false;
+        _errorText = e.message ?? 'Verification failed';
+      });
     } catch (e) {
-       if (!mounted) return;
-       setState(() {
-         _isLoading = false;
-         _errorText = 'Gözlənilməyən xəta baş verdi: $e';
-       });
-        ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text('Xəta: ${_errorText ?? 'Bilinməyən xəta'}')),
-        );
+      Logger.error('VerificationScreen: Unexpected error during verification', e);
+      setState(() {
+        _isLoading = false;
+        _errorText = 'An unexpected error occurred';
+      });
     }
   }
 
@@ -146,58 +124,45 @@ class _VerificationScreenState extends State<VerificationScreen> {
     setState(() {
       _isLoading = true;
       _errorText = null;
+      _canResendCode = false;
+      _timerSeconds = 60;
     });
 
-    for (var controller in _otpControllers) {
-      controller.clear();
-    }
-    if (_otpFocusNodes.isNotEmpty) {
-       _otpFocusNodes[0].requestFocus();
-    }
+    Logger.info('VerificationScreen: Attempting to resend code to ${widget.phoneNumber}');
 
     try {
-       await FirebaseAuth.instance.verifyPhoneNumber(
-          phoneNumber: widget.phoneNumber,
-          verificationCompleted: (PhoneAuthCredential credential) {
-             if (!mounted) return;
-             print("Verification completed after resend.");
-          }, 
-          verificationFailed: (FirebaseAuthException e) {
-              if (!mounted) return;
-              setState(() {
-                _isLoading = false;
-                _errorText = 'Yenidən göndərmə uğursuz oldu: ${e.message}';
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                 SnackBar(content: Text('Xəta: ${_errorText ?? 'Bilinməyən xəta'}')),
-              );
-          }, 
-          codeSent: (String verificationId, int? resendToken) {
-              if (!mounted) return;
-              print("New code sent. New verification ID: $verificationId"); 
-             _resendToken = resendToken; 
-              setState(() { _isLoading = false; });
-             _startResendTimer();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Yeni təsdiq kodu göndərildi.')),
-              );
-          }, 
-          codeAutoRetrievalTimeout: (String verificationId) {
-              if (!mounted) return;
-              print("Auto retrieval timeout for resent code: $verificationId");
-          },
-          timeout: const Duration(seconds: 60),
-          forceResendingToken: _resendToken,
-       );
+      await FirebaseAuth.instance.verifyPhoneNumber(
+        phoneNumber: widget.phoneNumber,
+        verificationCompleted: (PhoneAuthCredential credential) {
+          Logger.info('VerificationScreen: Auto verification completed on resend');
+          setState(() => _isLoading = false);
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          Logger.error('VerificationScreen: Resend verification failed', e);
+          setState(() {
+            _isLoading = false;
+            _errorText = e.message ?? 'Resend failed';
+          });
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          Logger.info('VerificationScreen: New code sent successfully');
+          setState(() {
+            _isLoading = false;
+            _canResendCode = false;
+          });
+          _startResendTimer();
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          Logger.warning('VerificationScreen: Auto retrieval timeout on resend');
+          setState(() => _isLoading = false);
+        },
+      );
     } catch (e) {
-       if (!mounted) return;
-       setState(() {
-          _isLoading = false;
-          _errorText = 'Yenidən göndərmə zamanı xəta: $e';
-       });
-       ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text('Xəta: ${_errorText ?? 'Bilinməyən xəta'}')),
-       );
+      Logger.error('VerificationScreen: Unexpected error during resend', e);
+      setState(() {
+        _isLoading = false;
+        _errorText = 'An unexpected error occurred';
+      });
     }
   }
 
@@ -242,10 +207,13 @@ class _VerificationScreenState extends State<VerificationScreen> {
 
                   // Phone Number Display with Back Option
                   InkWell(
-                    onTap: () => Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (context) => const PhoneAuthScreen()),
-                    ),
+                    onTap: () {
+                      Logger.info('Navigating back to phone input screen');
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const PhoneAuthScreen()),
+                      );
+                    },
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

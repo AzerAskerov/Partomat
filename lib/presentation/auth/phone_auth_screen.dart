@@ -2,6 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'verification_screen.dart';
+import 'package:partomat_app/core/utils/logger.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class PhoneAuthScreen extends StatefulWidget {
   const PhoneAuthScreen({super.key});
@@ -11,14 +13,17 @@ class PhoneAuthScreen extends StatefulWidget {
 }
 
 class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
-  final TextEditingController _phoneController = TextEditingController();
-  bool _isLoading = false;
+  final _formKey = GlobalKey<FormState>();
+  final _phoneController = TextEditingController();
+  bool _isLoadingPhone = false;
+  bool _isLoadingGoogle = false;
   String? _errorText;
   bool _isPhoneValid = false;
 
   @override
   void initState() {
     super.initState();
+    Logger.info('PhoneAuthScreen: Initialized');
     _phoneController.addListener(_validatePhone);
   }
 
@@ -26,6 +31,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
   void dispose() {
     _phoneController.removeListener(_validatePhone);
     _phoneController.dispose();
+    Logger.info('PhoneAuthScreen: Disposed');
     super.dispose();
   }
 
@@ -36,77 +42,103 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
         _errorText = null;
       }
     });
+    Logger.debug('PhoneAuthScreen: Phone validation - $_isPhoneValid');
   }
 
-  void _handlePhoneSubmit() async {
+  Future<void> _handlePhoneSubmit() async {
+    if (!_formKey.currentState!.validate()) {
+      Logger.warning('PhoneAuthScreen: Form validation failed');
+      return;
+    }
+
     setState(() {
-      _isLoading = true;
+      _isLoadingPhone = true;
       _errorText = null;
     });
 
-    final String phoneNumber = '+994${_phoneController.text.trim()}';
+    Logger.info('PhoneAuthScreen: Starting phone verification for ${_phoneController.text}');
 
     try {
       await FirebaseAuth.instance.verifyPhoneNumber(
-        phoneNumber: phoneNumber,
-        verificationCompleted: (PhoneAuthCredential credential) async {
-          setState(() { _isLoading = false; });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Telefon nömrəsi avtomatik təsdiqləndi')),
-          );
+        phoneNumber: _phoneController.text,
+        verificationCompleted: (PhoneAuthCredential credential) {
+          Logger.info('PhoneAuthScreen: Auto verification completed');
+          setState(() => _isLoadingPhone = false);
         },
         verificationFailed: (FirebaseAuthException e) {
-          if (!mounted) return;
+          Logger.error('PhoneAuthScreen: Verification failed', e);
           setState(() {
-            _isLoading = false;
-            _errorText = 'Təsdiq uğursuz oldu: ${e.message}';
+            _isLoadingPhone = false;
+            _errorText = e.message ?? 'Verification failed';
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Xəta: ${_errorText ?? 'Bilinməyən xəta'}' )),
-          );
         },
         codeSent: (String verificationId, int? resendToken) {
-          if (!mounted) return;
-          setState(() { _isLoading = false; });
-          Navigator.pushReplacement(
+          Logger.info('PhoneAuthScreen: Verification code sent, navigating to VerificationScreen');
+          setState(() => _isLoadingPhone = false);
+          Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => VerificationScreen(
-                phoneNumber: phoneNumber,
                 verificationId: verificationId,
+                phoneNumber: _phoneController.text,
               ),
             ),
           );
         },
         codeAutoRetrievalTimeout: (String verificationId) {
-          if (!mounted) return;
-          print("Auto retrieval timeout for verification ID: $verificationId");
+          Logger.warning('PhoneAuthScreen: Auto retrieval timeout');
+          setState(() => _isLoadingPhone = false);
         },
-        timeout: const Duration(seconds: 60),
       );
     } catch (e) {
-      if (!mounted) return;
+      Logger.error('PhoneAuthScreen: Unexpected error during verification', e);
       setState(() {
-        _isLoading = false;
-        _errorText = 'Gözlənilməyən xəta baş verdi: $e';
+        _isLoadingPhone = false;
+        _errorText = 'An unexpected error occurred';
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Xəta: ${_errorText ?? 'Bilinməyən xəta'}' )),
-      );
     }
   }
 
-  void _handleGoogleSignIn() {
+  Future<void> _handleGoogleSignIn() async {
     setState(() {
-      _isLoading = true;
+      _isLoadingGoogle = true;
       _errorText = null;
     });
+    Logger.info('PhoneAuthScreen: Starting Google Sign-In');
 
-    // TODO: Implement actual Firebase Google Sign-In
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return;
-      // TODO: Navigate to GoogleProfileScreen
-    });
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+      if (googleUser == null) {
+        Logger.warning('PhoneAuthScreen: Google Sign-In cancelled by user');
+        setState(() => _isLoadingGoogle = false);
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      await FirebaseAuth.instance.signInWithCredential(credential);
+      Logger.info('PhoneAuthScreen: Google Sign-In successful, user authenticated');
+    } on FirebaseAuthException catch (e) {
+      Logger.error('PhoneAuthScreen: Google Sign-In failed (Firebase)', e);
+      setState(() {
+        _errorText = e.message ?? 'Google Sign-In failed';
+      });
+    } catch (e, stackTrace) {
+      Logger.error('PhoneAuthScreen: Google Sign-In failed (Unexpected)', e, stackTrace);
+      setState(() {
+        _errorText = 'An unexpected error occurred during Google Sign-In';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingGoogle = false);
+      }
+    }
   }
 
   @override
@@ -217,7 +249,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
 
                   // Continue Button
                   ElevatedButton(
-                    onPressed: _isLoading || !_isPhoneValid ? null : _handlePhoneSubmit,
+                    onPressed: _isLoadingPhone || _isLoadingGoogle ? null : _handlePhoneSubmit,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: colorScheme.primary,
                       foregroundColor: Colors.white,
@@ -227,7 +259,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                       ),
                       textStyle: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                     ),
-                    child: _isLoading
+                    child: _isLoadingPhone
                         ? const SizedBox(
                             width: 20,
                             height: 20,
@@ -267,7 +299,7 @@ class _PhoneAuthScreenState extends State<PhoneAuthScreen> {
                   OutlinedButton.icon(
                     icon: Image.asset('assets/google_logo.png', height: 20.0),
                     label: const Text('Google ilə davam edin'),
-                    onPressed: _isLoading ? null : _handleGoogleSignIn,
+                    onPressed: _isLoadingPhone || _isLoadingGoogle ? null : _handleGoogleSignIn,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.black87,
                       backgroundColor: Colors.white,
