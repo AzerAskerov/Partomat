@@ -249,64 +249,70 @@ class _VerificationScreenState extends State<VerificationScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.phone, size: 16),
+                        Icon(Icons.phone_iphone, size: 16, color: Colors.grey[700]),
                         const SizedBox(width: 8),
                         Text(
-                          '+994 ${widget.phoneNumber}',
-                          style: textTheme.titleSmall,
+                          widget.phoneNumber,
+                          style: textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
                         ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.edit, size: 16),
+                        const SizedBox(width: 8),
+                        Icon(Icons.edit_outlined, size: 16, color: Colors.grey[700]),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
 
-                  // Verification Code Title
+                  // Verification Code Input Title
                   Text(
                     'Təsdiq kodunu daxil edin',
-                    style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
                     textAlign: TextAlign.center,
+                    style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w500),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 24),
 
                   // OTP Input Fields
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: List.generate(6, (index) {
                       return SizedBox(
-                        width: 45,
+                        width: 50,
+                        height: 60,
                         child: TextField(
                           controller: _otpControllers[index],
                           focusNode: _otpFocusNodes[index],
                           textAlign: TextAlign.center,
+                          style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                           keyboardType: TextInputType.number,
-                          maxLength: 1,
-                          style: textTheme.titleLarge,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(1),
+                          ],
                           decoration: InputDecoration(
-                            counterText: '',
                             filled: true,
                             fillColor: Colors.grey[100],
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.0),
                               borderSide: BorderSide.none,
                             ),
                             enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.0),
                               borderSide: BorderSide(color: Colors.grey[300]!),
                             ),
                             focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: colorScheme.primary),
+                              borderRadius: BorderRadius.circular(12.0),
+                              borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
                             ),
+                            contentPadding: const EdgeInsets.symmetric(vertical: 16),
                           ),
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                          ],
                           onChanged: (value) {
-                            if (value.isNotEmpty && index < 5) {
-                              _otpFocusNodes[index + 1].requestFocus();
+                            if (value.length == 1 && index < 5) {
+                              FocusScope.of(context).requestFocus(_otpFocusNodes[index + 1]);
+                            } else if (value.isEmpty && index > 0) {
+                              FocusScope.of(context).requestFocus(_otpFocusNodes[index - 1]);
                             }
+                            setState(() {
+                              _errorText = null;
+                            });
                           },
                         ),
                       );
@@ -314,7 +320,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Timer and Resend Option
+                  // Resend Code Area
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -322,21 +328,23 @@ class _VerificationScreenState extends State<VerificationScreen> {
                         'SMS təsdiq kodu göndərildi',
                         style: textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
                       ),
-                      if (_timerSeconds > 0)
-                        Text(
-                          'Yenidən göndər (${_timerSeconds}s)',
-                          style: textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
-                        )
-                      else
-                        TextButton(
-                          onPressed: _isLoading || !_canResendCode ? null : _handleResendCode,
-                          child: const Text('Yenidən göndər'),
+                      TextButton(
+                        onPressed: _canResendCode && !_isLoading ? _handleResendCode : null,
+                        child: Text(
+                          _canResendCode
+                              ? 'Yenidən göndər'
+                              : 'Yenidən göndər (${_timerSeconds}s)',
+                          style: textTheme.bodySmall?.copyWith(
+                            color: _canResendCode ? colorScheme.primary : Colors.grey[600],
+                            fontWeight: _canResendCode ? FontWeight.bold : FontWeight.normal,
+                          ),
                         ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
 
-                  if (_errorText != null)
+                   if (_errorText != null)
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -368,7 +376,7 @@ class _VerificationScreenState extends State<VerificationScreen> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(12.0),
                       ),
                       textStyle: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                     ),
